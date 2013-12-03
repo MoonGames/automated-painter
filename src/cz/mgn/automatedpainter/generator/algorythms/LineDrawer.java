@@ -17,6 +17,8 @@
 package cz.mgn.automatedpainter.generator.algorythms;
 
 import cz.mgn.automatedpainter.generator.PaintUpdate;
+import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Random;
@@ -45,11 +47,46 @@ public class LineDrawer {
         int h = (int) Math.ceil(rect.getPointB().y - rect.getPointA().y);
 
         BufferedImage buffer = new BufferedImage(w, h, BufferedImage.TYPE_4BYTE_ABGR);
-        //TODO paintit
+        paintBuffer(buffer);
 
         PaintUpdate update = new PaintUpdate(rect.getPointA().x, rect.getPointA().y, buffer);
-        toDraw.clear();
+
+        synchronized (toDraw) {
+            toDraw.clear();
+        }
+
         return update;
+    }
+
+    protected void paintBuffer(BufferedImage dst) {
+        Graphics2D g = (Graphics2D) dst.getGraphics();
+        g.setColor(Color.RED);
+
+        synchronized (toDraw) {
+            for (LineSegment segment : toDraw) {
+                paintLine(g, segment);
+            }
+        }
+
+        g.dispose();
+    }
+
+    protected void paintLine(Graphics2D g, LineSegment segment) {
+        Vector pos = segment.getPointA().clone();
+        Vector direction = segment.getPointB().subtract(pos);
+
+        float radius = 5;
+        float step = radius / 3;
+        int steps = (int) (direction.getSize() / step);
+        direction.adjustSizeLocal(step);
+
+
+        for (int i = 0; i <= steps; i++) {
+            int x = (int) (pos.getX() - (radius / 2));
+            int y = (int) (pos.getY() - (radius / 2));
+            g.fillOval(x, y, (int) radius, (int) radius);
+            pos.addLocal(direction);
+        }
     }
 
     protected LineSegment getBufferRectangle() {
@@ -89,7 +126,9 @@ public class LineDrawer {
         updateSpeed(time);
         position.addLocal(vector);
         Vector pointB = position.clone();
-        toDraw.add(new LineSegment(pointA, pointB));
+        synchronized (toDraw) {
+            toDraw.add(new LineSegment(pointA, pointB));
+        }
     }
 
     protected void updateAngle(float time) {
@@ -197,6 +236,16 @@ public class LineDrawer {
             return this;
         }
 
+        public Vector subtract(Vector v) {
+            return new Vector(x - v.getX(), y - v.getY());
+        }
+
+        public Vector subtractLocal(Vector v) {
+            x -= v.getX();
+            y -= v.getY();
+            return this;
+        }
+
         public Vector scale(float n) {
             return new Vector(x * n, y * n);
         }
@@ -220,6 +269,18 @@ public class LineDrawer {
             Vector temp = rotate(angle);
             this.x = temp.getX();
             this.y = temp.getY();
+            return this;
+        }
+
+        public Vector adjustSize(float size) {
+            float coeff = getSize() / size;
+            return new Vector(x * coeff, y * coeff);
+        }
+
+        public Vector adjustSizeLocal(float size) {
+            float coeff = getSize() / size;
+            x *= coeff;
+            y *= coeff;
             return this;
         }
     }
