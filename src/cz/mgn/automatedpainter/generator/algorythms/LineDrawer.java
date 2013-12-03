@@ -16,7 +16,6 @@
  */
 package cz.mgn.automatedpainter.generator.algorythms;
 
-import cz.mgn.automatedpainter.generator.PaintUpdate;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -27,20 +26,25 @@ import java.util.Random;
  *
  * @author Martin Indra <aktive at seznam.cz>
  */
-public class LineDrawer {
+public class LineDrawer implements Drawer {
 
     protected static final float MIN_SPEED = 10;
     protected static final float MAX_SPEED = 100;
     protected static final float MIN_ANGULAR_VELOCITY = (float) (-Math.PI * 5);
     protected static final float MAX_ANGULAR_VELOCITY = (float) (Math.PI * 5);
+    protected int width;
+    protected int height;
     protected float angularVelocity = (MIN_ANGULAR_VELOCITY + MAX_ANGULAR_VELOCITY) / 2;
     protected Vector vector = new Vector((MAX_SPEED + MIN_SPEED) / 2, 0);
     protected Vector position = new Vector(100, 100);
     protected ArrayList<LineSegment> toDraw = new ArrayList<>();
 
-    public LineDrawer() {
+    public LineDrawer(int width, int height) {
+        this.width = width;
+        this.height = height;
     }
 
+    @Override
     public PaintUpdate drawAndClearBuffer() {
         LineSegment rect = getBufferRectangle();
         int w = (int) Math.ceil(rect.getPointB().x - rect.getPointA().x);
@@ -49,7 +53,8 @@ public class LineDrawer {
         BufferedImage buffer = new BufferedImage(w, h, BufferedImage.TYPE_4BYTE_ABGR);
         paintBuffer(buffer);
 
-        PaintUpdate update = new PaintUpdate(rect.getPointA().x, rect.getPointA().y, buffer);
+        PaintUpdate update = new PaintUpdate((int) rect.getPointA().x,
+                (int) rect.getPointA().y, buffer);
 
         synchronized (toDraw) {
             toDraw.clear();
@@ -120,14 +125,30 @@ public class LineDrawer {
         return new LineSegment(new Vector(xMin, yMin), new Vector(xMax, yMax));
     }
 
+    @Override
     public void update(float time) {
         Vector pointA = position.clone();
         updateAngle(time);
         updateSpeed(time);
+        bounce();
         position.addLocal(vector);
         Vector pointB = position.clone();
         synchronized (toDraw) {
             toDraw.add(new LineSegment(pointA, pointB));
+        }
+    }
+
+    protected void bounce() {
+        if (position.getX() < 0 && vector.getX() < 0) {
+            vector.flipXLocal();
+        } else if (position.getX() > width && vector.getX() > 0) {
+            vector.flipXLocal();
+        }
+
+        if (position.getY() < 0 && vector.getY() < 0) {
+            vector.flipYLocal();
+        } else if (position.getY() > height && vector.getY() > 0) {
+            vector.flipYLocal();
         }
     }
 
@@ -281,6 +302,24 @@ public class LineDrawer {
             float coeff = getSize() / size;
             x *= coeff;
             y *= coeff;
+            return this;
+        }
+
+        public Vector flipX() {
+            return new Vector(-x, y);
+        }
+
+        public Vector flipXLocal() {
+            x *= -1;
+            return this;
+        }
+
+        public Vector flipY() {
+            return new Vector(x, -y);
+        }
+
+        public Vector flipYLocal() {
+            y *= -1;
             return this;
         }
     }

@@ -14,10 +14,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package cz.mgn.automatedpainter.generator;
 
+import cz.mgn.automatedpainter.generator.algorythms.Drawer;
+import cz.mgn.automatedpainter.generator.algorythms.LineDrawer;
+import cz.mgn.automatedpainter.generator.algorythms.PaintUpdate;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -26,11 +30,19 @@ import java.util.ArrayList;
 public class Generator extends Thread {
 
     /**
+     * Updates per second = how often to paint a bit.
+     */
+    protected static final int UPS = 20;
+    protected volatile boolean running = false;
+    /**
      * List of listeners to which should be informed about paint events.
      */
     protected ArrayList<PaintingListener> paintingListeners = new ArrayList<>();
+    protected Drawer drawer;
 
-    public Generator() {
+    public Generator(int width, int height) {
+        //TODO: more options
+        this.drawer = new LineDrawer(width, height);
     }
 
     /**
@@ -46,6 +58,7 @@ public class Generator extends Thread {
 
     /**
      * Removes listener from the list of listeners informed about paint events.
+     *
      * @param listener listener to remove
      * @return true if listener has been found in the list and removed
      */
@@ -55,8 +68,52 @@ public class Generator extends Thread {
         }
     }
 
+    public void finish() {
+        running = false;
+    }
+
     @Override
     public void run() {
+        running = true;
 
+        long now = System.nanoTime() / 1000000;
+        long before = now;
+        long after, sleep;
+
+        while (running) {
+            now = System.nanoTime() / 1000000;
+            float tpf = (float) (now - before) / 1000;
+            before = now;
+
+            update(tpf);
+
+            after = System.nanoTime() / 1000000;
+            sleep = 1000 / UPS - after + before;
+            try {
+                if (sleep > 5) {
+                    Thread.sleep(sleep);
+                } else {
+                    Thread.yield();
+                }
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Generator.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+
+    /**
+     *
+     * @param tpf time per frame = time in seconds which has passed since the
+     *  last update
+     */
+    protected void update(float tpf) {
+        drawer.update(tpf);
+        PaintUpdate update = drawer.drawAndClearBuffer();
+
+        synchronized (paintingListeners) {
+            for (PaintingListener litener : paintingListeners) {
+                litener.paint(update.getImage(), update.getX(), update.getY());
+            }
+        }
     }
 }

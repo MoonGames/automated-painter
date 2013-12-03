@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package cz.mgn.automatedpainter.generator;
+package cz.mgn.automatedpainter.generator.algorythms;
 
 import java.awt.image.BufferedImage;
 
@@ -25,11 +25,11 @@ import java.awt.image.BufferedImage;
  */
 public class PaintUpdate {
 
-    protected float x;
-    protected float y;
+    protected int x;
+    protected int y;
     protected BufferedImage image;
 
-    public PaintUpdate(float x, float y, BufferedImage image) {
+    public PaintUpdate(int x, int y, BufferedImage image) {
         this.x = x;
         this.y = y;
         this.image = image;
@@ -39,11 +39,11 @@ public class PaintUpdate {
         return image;
     }
 
-    public float getX() {
+    public int getX() {
         return x;
     }
 
-    public float getY() {
+    public int getY() {
         return y;
     }
 
